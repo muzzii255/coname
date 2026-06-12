@@ -67,10 +67,11 @@ goos: linux
 goarch: amd64
 pkg: github.com/muzzii255/coname
 cpu: AMD Ryzen 7 9700X 8-Core Processor
-BenchmarkNormalizeWords-16    	  686209	      1741 ns/op	     208 B/op	       1 allocs/op
-BenchmarkNormalizeWords-16    	  657469	      1712 ns/op	     208 B/op	       1 allocs/op
-BenchmarkNormalizeWords-16    	  707410	      1760 ns/op	     208 B/op	       1 allocs/op
-BenchmarkNormalizeWords-16    	  700401	      1753 ns/op	     208 B/op	       1 allocs/op
+BenchmarkNormalizeWords-16    	  402123	      3013 ns/op	     576 B/op	       2 allocs/op
+BenchmarkNormalizeWords-16    	  400000	      2914 ns/op	     576 B/op	       2 allocs/op
+BenchmarkNormalizeWords-16    	  409288	      2945 ns/op	     576 B/op	       2 allocs/op
+BenchmarkNormalizeWords-16    	  391759	      2949 ns/op	     576 B/op	       2 allocs/op
+BenchmarkNormalizeWords-16    	  401140	      2943 ns/op	     576 B/op	       2 allocs/op
 ```
 
 ## Updating Designators
