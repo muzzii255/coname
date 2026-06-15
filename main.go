@@ -11,7 +11,6 @@
 package coname
 
 import (
-	"bytes"
 	"slices"
 	"strings"
 	"unicode"
@@ -48,68 +47,128 @@ func compile(designators []string) []string {
 	return out
 }
 
-// appendNormalized appends the lowercased form of s, minus periods, to norm.
-// For every byte appended it records in src the byte offset in s of the rune
-// it came from, so match positions in the normalized form can be mapped back
-// to s even when their lengths differ (dropped periods, case-changed runes).
-func appendNormalized(norm []byte, src []int, s string) ([]byte, []int) {
-	for i, r := range s {
+// matchSuffix reports where the compiled designator d (lowercase, no periods)
+// matches the end of name, comparing case-insensitively and skipping '.'
+// runes in name. Returns the byte offset in name where the match starts,
+// or -1 if it doesn't match.
+func matchSuffix(name, d string) int {
+	i, j := len(name), len(d)
+	for j > 0 {
+		if i == 0 {
+			return -1
+		}
+		r, size := utf8.DecodeLastRuneInString(name[:i])
 		if r == '.' {
+			i -= size
 			continue
 		}
-		n := len(norm)
-		norm = utf8.AppendRune(norm, unicode.ToLower(r))
-		for ; n < len(norm); n++ {
-			src = append(src, i)
+		dr, dsize := utf8.DecodeLastRuneInString(d[:j])
+		if unicode.ToLower(r) != dr {
+			return -1
 		}
+		i -= size
+		j -= dsize
 	}
-	return norm, src
+	return i
+}
+
+// matchPrefix reports where the compiled designator d matches the start of
+// name (case-insensitive, '.'-skipping), followed by a space and at least one
+// more non-period rune. Returns the byte offset just past the space, or -1.
+func matchPrefix(name, d string) int {
+	i, j := 0, 0
+	for j < len(d) {
+		if i >= len(name) {
+			return -1
+		}
+		r, size := utf8.DecodeRuneInString(name[i:])
+		if r == '.' {
+			i += size
+			continue
+		}
+		dr, dsize := utf8.DecodeRuneInString(d[j:])
+		if unicode.ToLower(r) != dr {
+			return -1
+		}
+		i += size
+		j += dsize
+	}
+	for {
+		if i >= len(name) {
+			return -1
+		}
+		r, size := utf8.DecodeRuneInString(name[i:])
+		if r == '.' {
+			i += size
+			continue
+		}
+		if r != ' ' {
+			return -1
+		}
+		i += size
+		break
+	}
+	rest := name[i:]
+	for {
+		if rest == "" {
+			return -1
+		}
+		r, size := utf8.DecodeRuneInString(rest)
+		if r != '.' {
+			break
+		}
+		rest = rest[size:]
+	}
+	return i
+}
+
+// lastNonPeriod returns the last rune of s that isn't '.', or 0 if none.
+func lastNonPeriod(s string) rune {
+	for len(s) > 0 {
+		r, size := utf8.DecodeLastRuneInString(s)
+		if r != '.' {
+			return r
+		}
+		s = s[:len(s)-size]
+	}
+	return 0
 }
 
 // normalize strips legal entity designators from a company name and returns
-// the cleaned name. It is case-insensitive and period-insensitive (so
-// "L.L.C." and "LLC" are treated the same). It will never strip the entire
-// name, protecting against short names that collide with designator
-// abbreviations (e.g., "SAP" won't be stripped even though it matches "S.A.P.").
-//
-// The result is a substring of the input; normalize never copies the name.
+// the cleaned name. Case-insensitive and period-insensitive. Never strips
+// the entire name. The result is always a substring of the input; normalize
+// performs no allocations.
 func normalize(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ""
 	}
 
-	norm, src := appendNormalized(make([]byte, 0, len(name)), make([]int, 0, len(name)), name)
-
-	// Strip suffix designators. Loop because some names stack several,
+	// strip suffix designators. Loop because some names stack several,
 	// e.g. "Foo GmbH & Co. KG".
 	for stripped := true; stripped; {
 		stripped = false
 		for _, d := range normSuffixes {
-			cut := len(norm) - len(d)
-			if cut < 0 || string(norm[cut:]) != d {
+			cut := matchSuffix(name, d)
+			if cut < 0 {
 				continue
 			}
-			if cut == 0 {
-				continue // don't strip if it would remove everything
+			// skips strip the whole name, and require a word boundary
+			// so "Tabasco" doesn't lose its "co". lastNonPeriod skips
+			// dots so "X.LLC" keeps the same boundary semantics as the
+			// old normalized-buffer version.
+			if r := lastNonPeriod(name[:cut]); r == 0 || isWordChar(r) {
+				continue
 			}
-			// Require a word boundary so "Tabasco" doesn't lose its "co".
-			if cut > 0 {
-				if r, _ := utf8.DecodeLastRune(norm[:cut]); isWordChar(r) {
-					continue
-				}
-			}
-			name = strings.TrimRight(name[:src[cut]], trimCutset)
-			norm = bytes.TrimRight(norm[:cut], trimCutset)
+			name = strings.TrimRight(name[:cut], trimCutset)
 			stripped = true
 			break
 		}
 	}
 
 	for _, d := range normPrefixes {
-		if len(norm) > len(d)+1 && string(norm[:len(d)]) == d && norm[len(d)] == ' ' {
-			name = strings.TrimLeft(name[src[len(d)]:], trimCutset)
-			norm, src = appendNormalized(norm[:0], src[:0], name)
+		if i := matchPrefix(name, d); i >= 0 {
+			name = strings.TrimLeft(name[i:], trimCutset)
 		}
 	}
 

@@ -62,6 +62,7 @@ go get github.com/muzzii255/coname
 
 ## Benchmark
 
+### Old Benchmark
 ```text
 goos: linux
 goarch: amd64
@@ -73,6 +74,21 @@ BenchmarkNormalizeWords-16    	  409288	      2945 ns/op	     576 B/op	       2 
 BenchmarkNormalizeWords-16    	  391759	      2949 ns/op	     576 B/op	       2 allocs/op
 BenchmarkNormalizeWords-16    	  401140	      2943 ns/op	     576 B/op	       2 allocs/op
 ```
+### New Benchmark
+previous version version was consuming 200+ mbs memory, this one is slower but zero allocation and 2mb memory consumption
+```text
+goos: linux
+goarch: amd64
+pkg: github.com/muzzii255/coname
+cpu: AMD Ryzen 7 9700X 8-Core Processor
+BenchmarkNormalizeWords-16    	  159741	      6376 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNormalizeWords-16    	  199677	      6137 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNormalizeWords-16    	  195822	      6261 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNormalizeWords-16    	  200270	      6283 ns/op	       0 B/op	       0 allocs/op
+BenchmarkNormalizeWords-16    	  193830	      6239 ns/op	       0 B/op	       0 allocs/op
+PASS
+```
+
 
 ## Updating Designators
 
