@@ -391,6 +391,7 @@ var generatedSuffixes = []string{
 	"and Co. L.L.C.",
 	"and Company",
 	"apc",
+	"pc",
 	"associates",
 	"association sans but lucratif",
 	"chtd",
